@@ -139,14 +139,14 @@ if __name__ == '__main__':
         input_datalist = np.array(list(csv.reader(csvfile)))
 
     meanloss = 100000000000
-    epoch = 3000
+    epoch = 5000
     weight = np.ones((8,1),dtype=np.float64)
-    
+    weight[7] = 1400 #self defined initial bias
     learningRate = 0.00000001
     processedData = PreprocessData()
     testData, trainData = SplitData(processedData)
     
-    historyMin = 1000000000000
+    historyMin = 10000000000000
     remWeight = np.ones((8,1),dtype=np.float64)
     while epoch>0:
         weight = Regression(trainData,weight,learningRate)       
