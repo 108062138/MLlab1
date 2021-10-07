@@ -31,30 +31,48 @@ def SplitData(processedData):
     trainLIst = []
     testList = []
     for i in range(0,np.shape(processedData)[1]):
-        if i%4 == 0:
+        if i%5 == 0:
             testList.append(processedData[i])
         else:
             trainLIst.append(processedData[i])
     trainData = np.array(trainLIst)
     testData = np.array(testList)
     return [trainData,testData]
+
 def PreprocessData():
 # TODO 3: Preprocess your data  e.g. split datalist to x_datalist and y_datalist
     inputT = np.transpose(input_datalist)
     firs = np.array([1,2,3,4,5,6,7])
     ans = np.array([-1])
     ones = np.array([1])
-    for index in  range(1, np.shape(inputT)[1]-35):
+    for index in  range(0, np.shape(inputT)[1]-35):
         tmp = inputT[1][index:index+7]
         reShapeTmp = tmp.reshape((1,7))
         firs = np.vstack((firs,tmp))
-        ans = np.vstack((ans,inputT[2][index]))
+        ans = np.vstack((ans,inputT[2][index+7]))
         ones = np.vstack((ones,1))
     res = np.hstack((ans,firs))
     res = np.hstack((res,ones))# add this to make thte extra offset
     print(np.shape(res))
     return res[1:,:]
 
+def genTargetFeature():
+    inputT = np.transpose(input_datalist)
+    print(inputT)
+    firs = np.array([1,2,3,4,5,6,7])
+    ans = np.array([-1])
+    ones = np.array([1])
+    for index in  range(np.shape(inputT)[1]-35,np.shape(inputT)[1]-7):
+        print(index+7)
+        tmp = inputT[1][index:index+7]
+        reShapeTmp = tmp.reshape((1,7))
+        firs = np.vstack((firs,tmp))
+        ans = np.vstack((ans,inputT[0][index+7]))
+        ones = np.vstack((ones,1))
+    res = np.hstack((ans,firs))
+    res = np.hstack((res,ones))# add this to make thte extra offset
+    print(np.shape(res))
+    return res[1:,:]
 
 def Regression(processedData,weight,learningRate):
 # TODO 4: Implement regression
@@ -70,9 +88,9 @@ def Regression(processedData,weight,learningRate):
         tmp = 0 
         for i in range(0,np.shape(processedData)[0]):
             tmp -= (processedData[i][0].astype(float)-capY[i].astype(float)) * processedData[i][j].astype(float)# the phi function is just x
-        arr.append(tmp*2)
+        arr.append(tmp*2/np.shape(processedData)[0])
     gradiant = np.array(arr)
-    print(gradiant)
+    #print(gradiant)
     newWeight = np.subtract(weight,gradiant * learningRate)
     return newWeight
 
@@ -90,40 +108,65 @@ def CountLoss(processedData,weight):#return mse square
         tmp = capY[i].astype(float)-processedData[i][0].astype(float)
         cnt += tmp**2# produce mse
     return cnt/np.shape(processedData)[0]
-def MakePrediction():
+def MakePrediction(processedData,weight):
 # TODO 6: Make prediction of testing data 
-    print('hehe')
+    for i in range(0,np.shape(processedData)[0]):
+        item = processedData[i][1:9].astype(float)
+        weight = weight.astype(float)
+        val = np.dot(item,weight,out= None)
+        print('true value',processedData[i][0],'predict value',val)
+
+def genRes(processedData,weight):
+    for i in range(0,np.shape(processedData)[0]):
+        item = processedData[i][1:9].astype(float)
+        weight = weight.astype(float)
+        val = np.dot(item,weight,out= None)
+        print('predict value',val)
+        output_datalist.append([processedData[i][0],int(val)])
+
+    with open(output_dataroot, 'w', newline='', encoding="utf-8") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['Date', 'TSMC Price'])
+    
+        for row in output_datalist:
+            writer.writerow(row)
 
 
 # TODO 7: Call functions of TODO 2 to TODO 6, train the model and make prediction
 if __name__ == '__main__':
-    # Write prediction to output csv
-    # Read input csv to datalist
     with open(input_dataroot, newline='') as csvfile:
         print('read in data')
         input_datalist = np.array(list(csv.reader(csvfile)))
-    
-    learningRate = 0.000001
-    processedData = PreprocessData()
-    testData, trainData = SplitData(processedData)
 
     meanloss = 100000000000
-    epoch = 500
-    weight = np.zeros((8,1),dtype=np.float64)
-    while meanloss>100000 and epoch>0:
-        weight = Regression(processedData,weight,learningRate)
-        meanloss = CountLoss(trainData,weight)
-        epoch = epoch -1
-        print(meanloss)
-    print(weight)
+    epoch = 3000
+    weight = np.ones((8,1),dtype=np.float64)
     
-    #CountLoss()
-    #MakePrediction()
-    #print('end predict')
-    #with open(output_dataroot, 'w', newline='', encoding="utf-8") as csvfile:
-    #    writer = csv.writer(csvfile)
-    #    writer.writerow(['Date', 'TSMC Price'])
-    #
-    #    for row in output_datalist:
-    #        writer.writerow(row)
+    learningRate = 0.00000001
+    processedData = PreprocessData()
+    testData, trainData = SplitData(processedData)
+    
+    historyMin = 1000000000000
+    remWeight = np.ones((8,1),dtype=np.float64)
+    while epoch>0:
+        weight = Regression(trainData,weight,learningRate)       
+        meanloss = CountLoss(testData,weight)
+        if historyMin > meanloss:
+            remWeight = weight
+            historyMin = meanloss
+        epoch = epoch -1
+        print('loss: ',meanloss)
+
+    print('weight: ',weight)
+    print('remWeight: ', remWeight)
+    print('start predict')
+    MakePrediction(testData,remWeight)
+    print('end predict')
+
+    haha = genTargetFeature()
+    print(haha)
+    print(np.shape(haha))
+    genRes(haha,remWeight)
+    print(output_datalist)
+    
 
