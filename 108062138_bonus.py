@@ -13,7 +13,7 @@ import random
 # Do not change anything here except TODO 1 
 StudentID = '108062138' # TODO 1 : Fill your student ID here
 input_dataroot = 'input.csv' # Please name your input csv file as 'input.csv'
-output_dataroot = StudentID + '_basic_prediction.csv' # Output file will be named as '[StudentID]_basic_prediction.csv'
+output_dataroot = StudentID + '_bonus_prediction.csv' # Output file will be named as '[StudentID]_basic_prediction.csv'
 
 input_datalist =  [] # Initial datalist, saved as numpy array
 output_datalist =  [] # Your prediction, should be 20 * 2 matrix and saved as numpy array
@@ -31,7 +31,7 @@ def SplitData(processedData):
     trainLIst = []
     testList = []
     for i in range(0,np.shape(processedData)[0]):
-        if i%7 == 0:
+        if i%4 == 0:
             testList.append(processedData[i])
         else:
             trainLIst.append(processedData[i])
@@ -46,32 +46,28 @@ def PreprocessData():
     ans = np.array([-1])
     ones = np.array([1])
     for index in  range(0, np.shape(inputT)[1]-35):
-        tmp = inputT[1][index:index+7]
+        tmp = inputT[2][index:index+7]
         reShapeTmp = tmp.reshape((1,7))
         firs = np.vstack((firs,tmp))
-        ans = np.vstack((ans,inputT[2][index+7]))
+        ans = np.vstack((ans,inputT[2][index+8]))
         ones = np.vstack((ones,1))
     res = np.hstack((ans,firs))
     res = np.hstack((res,ones))# add this to make thte extra offset
-    print(np.shape(res))
     return res[1:,:]
 
 def genTargetFeature():
     inputT = np.transpose(input_datalist)
-    print(inputT)
     firs = np.array([1,2,3,4,5,6,7])
     ans = np.array([-1])
     ones = np.array([1])
     for index in  range(np.shape(inputT)[1]-35,np.shape(inputT)[1]-7):
-        print(index+7)
-        tmp = inputT[1][index:index+7]
+        tmp = inputT[2][index:index+7]
         reShapeTmp = tmp.reshape((1,7))
         firs = np.vstack((firs,tmp))
-        ans = np.vstack((ans,inputT[0][index+7]))
+        ans = np.vstack((ans,inputT[2][index+8]))
         ones = np.vstack((ones,1))
     res = np.hstack((ans,firs))
     res = np.hstack((res,ones))# add this to make thte extra offset
-    print(np.shape(res))
     return res[1:,:]
 
 def Regression(processedData,weight,learningRate):
@@ -110,20 +106,32 @@ def CountLoss(processedData,weight):#return mse square
     return cnt/np.shape(processedData)[0]
 def MakePrediction(processedData,weight):
 # TODO 6: Make prediction of testing data 
+    rec = 0
     for i in range(0,np.shape(processedData)[0]):
         item = processedData[i][1:9].astype(float)
         weight = weight.astype(float)
         val = np.dot(item,weight,out= None)
         print('true value',processedData[i][0],'predict value',val)
 
-def genRes(processedData,weight):
-    for i in range(0,np.shape(processedData)[0]):
-        item = processedData[i][1:9].astype(float)
-        weight = weight.astype(float)
-        val = np.dot(item,weight,out= None)
-        print('predict value',val)
-        output_datalist.append([processedData[i][0],int(val)])
+        rec+=abs(float(processedData[i][0])-float(val))/float(processedData[i][0])
+    print(rec/np.shape(processedData)[0])
 
+def genRes(processedData,weight):
+    item = np.ones((8,1))
+    for i in range(0,7):
+        item[i]= int(processedData[i])
+    #print('the item will be: ',item)
+    for i in range(0,28):
+        #print(item)
+        weight = weight.astype(float)
+        val = 0
+        for j in range(0,8):
+            val += item[j]* weight[j]
+        #print('predict value',val)
+        for j in range(0,6):
+            item[j] = item[j+1]
+        item[6] = val
+        output_datalist.append([i,int(val)])
     with open(output_dataroot, 'w', newline='', encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(['Date', 'TSMC Price'])
@@ -139,12 +147,12 @@ if __name__ == '__main__':
         input_datalist = np.array(list(csv.reader(csvfile)))
 
     meanloss = 100000000000
-    epoch = 2000
+    epoch = 500
     weight = np.ones((8,1),dtype=np.float64)
-    weight[7] = 800 #self defined initial bias
-    learningRate = 0.000000001
+    weight[7] = 180 #self defined initial bias
+    learningRate = 0.00000008
     processedData = PreprocessData()
-    testData, trainData = SplitData(processedData)
+    trainData, testData = SplitData(processedData)
     
     historyMin = 10000000000000
     remWeight = np.ones((8,1),dtype=np.float64)
@@ -162,11 +170,9 @@ if __name__ == '__main__':
     print('start predict')
     MakePrediction(testData,remWeight)
     print('end predict')
-
-    haha = genTargetFeature()
-    print(haha)
-    print(np.shape(haha))
-    genRes(haha,remWeight)
+    print(trainData[-1])
+    print(trainData[-1][1:])
+    genRes(trainData[-1][1:],remWeight)
     print(output_datalist)
     
 
